@@ -42,14 +42,9 @@ class flatMLNN:
     def initialize_parameters(self):  # initialize weights and biases
         previous_layer = self.store["A0"].shape[1]
         for layer in range(self.layer_count):
-            if self.layer[layer,0] == 0:
-                self.hyper_parameters["W" + str(layer + 1)] = np.random.randn(self.layer[layer,1], previous_layer) * 0.0001
-                self.hyper_parameters["bias" + str(layer + 1)] = np.random.randn(self.layer[layer,1]) * 0.0001
-                previous_layer = self.layer[layer,1]
-            else:
-                self.hyper_parameters["W" + str(layer + 1)] = np.random.randn(self.layer[layer,0], self.layer[layer,0], previous_layers, self.layer[layer,1]) * 0.0001
-                self.hyper_parameters["bias" + str(layer + 1)] = np.random.randn(1, 1, 1, layer[layer,1]) * 0.0001
-                previous_layers = self.layer[layer,1]
+            self.hyper_parameters["W" + str(layer + 1)] = np.random.randn(self.layer[layer,1], previous_layer) * 0.0001
+            self.hyper_parameters["bias" + str(layer + 1)] = np.random.randn(self.layer[layer,1]) * 0.0001
+            previous_layer = self.layer[layer,1]
 
     def switch(self, arg):
         return {
@@ -80,10 +75,10 @@ class flatMLNN:
             #         self.store["pad" + str(layer)])
             #     self.store["A" + str(layer)] = self.switch(self.layers[layer - 1, 3])(self.store["Z" + str(layer)])
             # else:
-            self.store["Z" + str(layer)], self.store["A" + str(layer)], self.store["cache" + str(layer)] = self.fully_connected(self.store["A" + str(layer - 1)],
-                                                                                                                                self.hyper_parameters["W" + str(layer)],
-                                                                                                                                self.hyper_parameters["bias" + str(layer)],
-                                                                                                                                self.layer[layer - 1, 2])
+            # self.store["Z" + str(layer)], self.store["A" + str(layer)], self.store["cache" + str(layer)] = self.fully_connected(self.store["A" + str(layer - 1)],
+            #                                                                                                                     self.hyper_parameters["W" + str(layer)],
+            #                                                                                                                     self.hyper_parameters["bias" + str(layer)],
+            #                                                                                                                     self.layer[layer - 1, 2])
             Z = self.store["A" + str(layer - 1)].dot(self.hyper_parameters["W" + str(layer)].T)+self.hyper_parameters["bias" + str(layer)]
             self.store["A" + str(layer)] = self.switch(self.layer[layer - 1, 2])(Z)
 

@@ -1,6 +1,7 @@
 import datasets.mnist.loader as mnist
 from sklearn.preprocessing import OneHotEncoder
 from datasets.multiNeural import SMNN
+from datasets.flat import flatMLNN
 import matplotlib.pyplot as plt
 from datasets.diaryNN import ANN
 import numpy as np
@@ -27,11 +28,11 @@ if __name__ == '__main__':
     print("test_x's shape: " + str(test_x.shape))
     print("train_y's shape: " + str(train_y.shape))
 
-    layers = np.ones((2, 5), dtype=int)
-    layers[0] = [0, 100, 0, 0, 0]
-    layers[1] = [0, 10, 3, 0, 0]
+    layers = np.ones((2, 3), dtype=int)
+    layers[0] = [0, 50, 0]
+    layers[1] = [0, 10, 3]
 
-    smnn = SMNN(layers)
+    smnn = flatMLNN(layers)
     costs = smnn.flat_handwritting_recognition(train_x,train_y, batch_size=6000, epoch=100, learning_rate=0.1)
     plt.figure()
     plt.plot(np.arange(len(costs)), costs)
