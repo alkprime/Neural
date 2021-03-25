@@ -168,15 +168,19 @@ class SMNN:
         cache = (A_prev, padding_cache)
         return Z, cache
 
-    def backward_conv_single_layer(self, cache):  # needs more work and understading
+    def backward_conv_single_layer(self, cache, layer):  # needs more work and understading
         A_prev, padding_cache = cache
+
+        W = self.hyper_parameters["W" + str(layer)]
+        b = self.hyper_parameters["b" + str(layer)]
+        A = self.store["A" + str(layer)]
 
         (z_layers, z_h, z_w, z_c) = A.shape
         (a_layers, a_h, a_w, a_c) = A_prev.shape
         (w_layers, kernel_h, kernel_w, filters) = W.shape
 
-        stride = self.parameters["stride"]
-        pad = self.parameters["pad"]
+        stride = self.hyper_parameters["stride" + str(layer)]
+        pad = self.hyper_parameters["pad" + str(layer)]
 
         for m in range(z_layers):
             dz_selected = dz[m]
@@ -184,9 +188,9 @@ class SMNN:
                 for j in range(z_w):
                     for c in range(z_c):
                         h_start = i * stride
-                        h_end = a_start + kernel_h
+                        h_end = h_start + kernel_h
                         w_start = j * stride
-                        w_end = w_star + kernel_w
+                        w_end = w_start + kernel_w
 
                         a_slice = dz[h_start:h_end, w_start:w_end, :]
                         da_prev_pad[vert_start:vert_end, horiz_start:horiz_end, :] += W[:, :, :, c] * dZ[m, h, w, c]

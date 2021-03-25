@@ -5,6 +5,7 @@ from datasets.flat import flatMLNN
 import matplotlib.pyplot as plt
 from datasets.diaryNN import ANN
 import numpy as np
+import idx2numpy
 
 def pre_process_data(train_x, train_y, test_x, test_y):
     # Normalize
@@ -14,10 +15,12 @@ def pre_process_data(train_x, train_y, test_x, test_y):
     enc = OneHotEncoder(sparse=False, categories='auto')
     train_y = enc.fit_transform(train_y.reshape(len(train_y), -1))
 
-    test_y = enc.transform(test_y.reshape(len(test_y), -1))
+    test_y = enc.transform(test_y.reshape(len(test_y), -15))
 
     return train_x, train_y, test_x, test_y
 
+def location():
+    return 'datasets/mnist/data_files'
 
 if __name__ == '__main__':
     train_x, train_y, test_x, test_y = mnist.get_data()
