@@ -59,8 +59,8 @@ class SMNN:
                 self.hyper_parameters["stride" + str(layer + 1)] = self.layer[layer,3]
                 self.hyper_parameters["pad" + str(layer + 1)] = self.layer[layer, 4]
                 if self.layer[layer,1] == 0:
-                    self.hyper_parameters["W" + str(layer + 1)] = np.random.randn(self.layer[layer, 0], self.layer[layer, 0], previous_layers, 0) * 0.0001
-                    #pooling layer here
+                    # pooling layer
+                    self.hyper_parameters["kernel" + str(layer + 1)] = np.random.randn(self.layer[layer, 0], self.layer[layer, 0], 0, 0) * 0.0001
                 else:
                     self.hyper_parameters["W" + str(layer + 1)] = np.random.randn(self.layer[layer,0], self.layer[layer,0], previous_layers, self.layer[layer,1]) * 0.0001
                     self.hyper_parameters["bias" + str(layer + 1)] = np.random.randn(1, 1, 1, layer[layer,1]) * 0.0001
@@ -119,6 +119,7 @@ class SMNN:
     def padding(given_array, padding):
         return np.pad(given_array, ((0, 0), (padding, padding), (padding, padding), (0, 0)))
 
+    # not used and I can not see a useful implementation
     def random_pad(given_array, padding):
         padding *= 2
         paddingup = random.randint(0, padding)
@@ -129,6 +130,68 @@ class SMNN:
         return padded_array, cache
 # -------------------------------------------------------------
 
+# ----------------------------------------------------- pool
+    def create_mask_from_window(x, mode):
+        if mode == -2:
+            mask = (x == np.max(x))
+        if mode == -1:
+            (n_h, n_w) = x.shape
+            mask = 1/(n_h*n_w)
+        return mask
+
+    def pool_single_layer(self, A_prev, layer):
+        # kernzel size 0 = h, 1 = w, 2 = layers, 3 = filters
+
+        kernel = self.hyper_parameters["kernel" + str(layer)]
+        stride = self.hyper_parameters["stride" + str(layer)]
+
+        z_layers = A_prev.shape[0]
+        z_h = int((A_prev.shape[1] - kernel[0]) / stride) + 1
+        z_w = int((A_prev.shape[2] - kernel[1]) / stride) + 1
+        z_c = A_prev[3]
+
+        Z = np.zeros((z_layers, z_h, z_w, z_c), dtype=float)
+        # array_splice = np.zeros((W[1], W[2], W[3]))
+        for m in range(z_layers):
+            a_selected = A_prev[m]
+            for i in range(z_h):
+                h_start = stride * i
+                h_end = h_start + kernel[0]
+                for j in range(z_w):
+                    w_start = stride * j
+                    w_end = w_start + kernel[1]
+                    for c in range(z_c):
+                        array_splice = a_selected[h_start:h_end, w_start:w_end, :]
+                        Z[m,i,j,c] = self.switch(self.layer[layer-1,2])(array_splice)
+
+        return Z
+
+    def pool_backprop(self, dA, layer):
+        A_prev = self.store["A" + str(layer - 1)]
+        dA_prev = np.zeros(A_prev.shape)
+
+        (da_layer, da_h, da_w, da_c) = dA_prev.shape
+
+        kernel = self.hyper_parameters["kernel" + str(layer)]
+        stride = self.hyper_parameters["stride" + str(layer)]
+
+        for m in range(da_layer):
+            a_selected = A_prev[m]
+            for i in range(da_h):
+                h_start = stride * i
+                h_end = h_start + kernel[0]
+                for j in range(da_w):
+                    w_start = stride * j
+                    w_end = w_start + kernel[1]
+                    for c in range(da_c):
+                        a_prev_slice = a_selected[h_start:h_end, w_start:w_end, :]
+                        mask = self.create_mask_from_window(a_prev_slice,self.layer[layer,2])
+                        dA_prev[m, h_start:h_end, w_start:w_end,c] = mask * dA[m,i,j,c]
+
+        return dA_prev
+# -------------------------------------------------------------
+
+# ----------------------------------------------------- conv
     def conv_single_step(given_array, W, b):
         Z = W.dot(given_array)
         Z = np.sum(Z)
@@ -151,7 +214,7 @@ class SMNN:
 
         Z = np.zeros((z_layers, z_h, z_w, z_c), dtype=float)
         # array_splice = np.zeros((W[1], W[2], W[3]))
-        if pad > 0: A_prev, padding_cache = self.random_pad(A_prev, pad)
+        if pad > 0: A_prev = self.padding(A_prev, pad)
         for m in range(z_layers):
             a_selected = A_prev[m]
             for i in range(z_h):
@@ -165,25 +228,27 @@ class SMNN:
                         weight = W[:, :, :, c]
                         bias = b[:, :, :, c]
                         Z[m, i, j, c] = self.conv_single_step(array_splice, weight, bias)
-        cache = (A_prev, padding_cache)
-        return Z, cache
+        return Z
 
     def backward_conv_single_layer(self, cache, layer):  # needs more work and understading
-        A_prev, padding_cache = cache
+        padding_cache = cache
 
         W = self.hyper_parameters["W" + str(layer)]
-        b = self.hyper_parameters["b" + str(layer)]
-        A = self.store["A" + str(layer)]
-
-        (z_layers, z_h, z_w, z_c) = A.shape
-        (a_layers, a_h, a_w, a_c) = A_prev.shape
-        (w_layers, kernel_h, kernel_w, filters) = W.shape
-
+        dZ = self.store["dZ" + str(layer)]
         stride = self.hyper_parameters["stride" + str(layer)]
         pad = self.hyper_parameters["pad" + str(layer)]
 
+        (z_layers, z_h,z_w, z_c) = dZ.shape
+        (_, kernel_h, kernel_w, _) = W.shape
+
+        dA_prev = np.zeros(self.store["A" + str(layer - 1)].shape)
+        da_prev_pad = self.padding(dA_prev, pad)
+        A_prev_pad = self.padding(self.store["A" + str(layer - 1)],pad)
+        dW = np.zeros(self.hyper_parameters["W" + str(layer)].shape)
+        db = np.zeros(self.hyper_parameters["b" + str(layer)].shape)
+
         for m in range(z_layers):
-            dz_selected = dz[m]
+            A_selected = A_prev_pad[m]
             for i in range(z_h):
                 for j in range(z_w):
                     for c in range(z_c):
@@ -192,24 +257,21 @@ class SMNN:
                         w_start = j * stride
                         w_end = w_start + kernel_w
 
-                        a_slice = dz[h_start:h_end, w_start:w_end, :]
-                        da_prev_pad[vert_start:vert_end, horiz_start:horiz_end, :] += W[:, :, :, c] * dZ[m, h, w, c]
-                        dW[:, :, :, c] += a_slice * dZ[m, h, w, c]
-                        db[:, :, :, c] += dZ[i, h, w, c]
-            dA_prev[m, :, :, :] = da_prev_pad[pad:-pad, pad:-pad, :]
+                        a_slice = A_selected[h_start:h_end, w_start:w_end, :]
+                        da_prev_pad[h_start:h_end, w_start:w_end, :] += W[:, :, :, c] * dZ[m, i, j, c]
 
+                        dW[:, :, :, c] += a_slice * dZ[m, i, j, c]
+                        db[:, :, :, c] += dZ[m, i, j, c]
+            dA_prev[m, :, :, :] = da_prev_pad[pad:-pad, pad:-pad, :]
+        return dA_prev, dW, db
+# -------------------------------------------------------------
     def forward_prop(self):
         for layer in range(1, self.layer_count + 1):
             if (self.layers[layer - 1, 0] != 0):
                 Z, self.store["cache" + str(layer)] = self.convolution_single_layer(self.store["A" + str(layer - 1)],layer)
-                self.store["A" + str(layer)] = self.switch(self.layers[layer - 1, 3])(Z)
             else:
-                # self.store["Z" + str(layer)], self.store["A" + str(layer)], self.store["cache" + str(layer)] = self.fully_connected(self.store["A" + str(layer - 1)],
-                #                                                                                                                 self.hyper_parameters["W" + str(layer)],
-                #                                                                                                                 self.hyper_parameters["bias" + str(layer)],
-                #                                                                                                                 self.layer[layer - 1, 2])
                 Z = self.store["A" + str(layer - 1)].dot(self.hyper_parameters["W" + str(layer)].T)+self.hyper_parameters["bias" + str(layer)]
-                self.store["A" + str(layer)] = self.switch(self.layer[layer - 1, 2])(Z)
+            self.store["A" + str(layer)] = self.switch(self.layer[layer - 1, 2])(Z)
 
     def backward_prop(self): #store and derivatives can be seperated, store not needed anymore
         for bd_layer in reversed(range(1, self.layer_count + 1)):

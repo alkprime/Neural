@@ -66,19 +66,6 @@ class flatMLNN:
 
     def forward_prop(self):
         for layer in range(1, self.layer_count + 1):
-            # if (self.layers[layer - 1, 0] != 0):
-            #     self.store["Z" + str(layer)], self.store["cache" + str(layer)] = self.convolution_single_layer(
-            #         self.store["A" + str(layer - 1)],
-            #         self.store["W" + str(layer)],
-            #         self.store["bias" + str(layer)],
-            #         self.store["stride" + str(layer)],
-            #         self.store["pad" + str(layer)])
-            #     self.store["A" + str(layer)] = self.switch(self.layers[layer - 1, 3])(self.store["Z" + str(layer)])
-            # else:
-            # self.store["Z" + str(layer)], self.store["A" + str(layer)], self.store["cache" + str(layer)] = self.fully_connected(self.store["A" + str(layer - 1)],
-            #                                                                                                                     self.hyper_parameters["W" + str(layer)],
-            #                                                                                                                     self.hyper_parameters["bias" + str(layer)],
-            #                                                                                                                     self.layer[layer - 1, 2])
             Z = self.store["A" + str(layer - 1)].dot(self.hyper_parameters["W" + str(layer)].T)+self.hyper_parameters["bias" + str(layer)]
             self.store["A" + str(layer)] = self.switch(self.layer[layer - 1, 2])(Z)
 
