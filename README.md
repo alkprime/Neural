@@ -9,5 +9,6 @@
  pay attention to the imported libraries
  
  to do:
- - finish the CNN
+ - finish the CNN (written untested)
+ - add a GUI
  - write a better read me
