@@ -25,11 +25,11 @@ def location():
 
 if __name__ == '__main__':
     #fetch data, change location function when using GUI
-    print(location() + 'train-images.idx3-ubyte')
-    train_images = idx2numpy.convert_from_file(location() + 'train-images.idx3-ubyte')
-    train_labels = idx2numpy.convert_from_file(location() + 'train-labels.idx1-ubyte')
+    # print(location() + 'train-images.idx3-ubyte')
+    # train_images = idx2numpy.convert_from_file(location() + 'train-images.idx3-ubyte')
+    # train_labels = idx2numpy.convert_from_file(location() + 'train-labels.idx1-ubyte')
 
-    print(train_images.shape)
+    # print(train_images.shape)
     train_x, train_y, test_x, test_y = mnist.get_data()
 
     train_x, train_y, test_x, test_y = pre_process_data(train_x, train_y, test_x, test_y)
