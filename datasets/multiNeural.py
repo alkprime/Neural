@@ -62,9 +62,10 @@ class SMNN:
                     # pooling layer
                     self.hyper_parameters["kernel" + str(layer + 1)] = np.random.randn(self.layer[layer, 0], self.layer[layer, 0], 0, 0) * 0.0001
                 else:
-                    self.hyper_parameters["W" + str(layer + 1)] = np.random.randn(self.layer[layer,0], self.layer[layer,0], previous_layers, self.layer[layer,1]) * 0.0001
-                    self.hyper_parameters["bias" + str(layer + 1)] = np.random.randn(1, 1, 1, layer[layer,1]) * 0.0001
-                    previous_layers = self.layer[layer,1]
+                    self.hyper_parameters["W" + str(layer + 1)] = np.random.randn(self.layer[layer,0], self.layer[layer,0], previous_layer, self.layer[layer,1]) * 0.0001
+                    self.hyper_parameters["bias" + str(layer + 1)] = np.random.randn(1, 1, 1, self.layer[layer,1]) * 0.0001
+                    previous_layer = self.layer[layer,1]
+            print('W' + str(layer + 1), self.store['W' + str(layer + 1)].shape)
 
     def pooling(A_prev, hyperparameters, mode="average"):
 
@@ -268,8 +269,15 @@ class SMNN:
     def forward_prop(self):
         for layer in range(1, self.layer_count + 1):
             if (self.layers[layer - 1, 0] != 0):
-                Z, self.store["cache" + str(layer)] = self.convolution_single_layer(self.store["A" + str(layer - 1)],layer)
+                if self.layers[layer - 1, 1] != 0:
+                    Z, self.store["cache" + str(layer)] = self.convolution_single_layer(self.store["A" + str(layer - 1)],layer)
+                else:
+                    Z = self.pool_single_layer(self.store["A" + str(layer - 1)], layer)
             else:
+                if len(self.hyper_parameters["W" + str(layer-1)].shape) != len(self.hyper_parameters["W" + str(layer)].shape):
+                    #flatten needs more work
+                    self.store["arrayA" + str(layer - 1)] = self.store["A" + str(layer - 1)]
+                    self.store["A" + str(layer - 1)] = self.store["arrayA" + str(layer - 1)].reshape(self.store["A" + str(layer - 1)].shape[0],-1)
                 Z = self.store["A" + str(layer - 1)].dot(self.hyper_parameters["W" + str(layer)].T)+self.hyper_parameters["bias" + str(layer)]
             self.store["A" + str(layer)] = self.switch(self.layer[layer - 1, 2])(Z)
 
