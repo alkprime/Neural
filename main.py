@@ -55,7 +55,7 @@ if __name__ == '__main__':
     layers[6] = [0,10,3,0,0]    #FC 84-10 softmax
 
     smnn = SMNN(layers)
-    costs = smnn.flat_handwritting_recognition(train_images, train_labels, batch_size=600, epoch=10, learning_rate=0.1)
+    costs = smnn.handwritting_recognition(train_images, train_labels, batch_size=600, epoch=10, learning_rate=0.1)
     # disable above if not conv
 
     # enable for flat net

@@ -65,7 +65,6 @@ class SMNN:
                     self.hyper_parameters["W" + str(layer + 1)] = np.random.randn(self.layer[layer,0], self.layer[layer,0], previous_layer, self.layer[layer,1]) * 0.0001
                     self.hyper_parameters["bias" + str(layer + 1)] = np.random.randn(1, 1, 1, self.layer[layer,1]) * 0.0001
                     previous_layer = self.layer[layer,1]
-            print('W' + str(layer + 1), self.store['W' + str(layer + 1)].shape)
 
     def pooling(A_prev, hyperparameters, mode="average"):
 
@@ -268,8 +267,8 @@ class SMNN:
 # -------------------------------------------------------------
     def forward_prop(self):
         for layer in range(1, self.layer_count + 1):
-            if (self.layers[layer - 1, 0] != 0):
-                if self.layers[layer - 1, 1] != 0:
+            if (self.layer[layer - 1, 0] != 0):
+                if self.layer[layer - 1, 1] != 0:
                     Z, self.store["cache" + str(layer)] = self.convolution_single_layer(self.store["A" + str(layer - 1)],layer)
                 else:
                     Z = self.pool_single_layer(self.store["A" + str(layer - 1)], layer)
@@ -290,7 +289,7 @@ class SMNN:
                 self.store["dZ" + str(bd_layer - 1)] = (self.derivative_switch(self.layer[bd_layer - 1, 2])(self.store["A" + str(bd_layer - 1)])) * self.store["dA" + str(bd_layer - 1)]
                 # above line is a msterpeice enjoy!
 
-    def flat_handwritting_recognition(self, X, Y, batch_size, epoch=50, learning_rate=0.01):
+    def handwritting_recognition(self, X, Y, batch_size, epoch=50, learning_rate=0.01):
         batches_per_epoch = int(X.shape[0] / batch_size)
         remaining_from_batch = X.shape[0] % batch_size
 
