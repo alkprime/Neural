@@ -22,6 +22,7 @@ def pre_process_data(train_x, train_y, test_x, test_y):
 
 #to be used before using GUI
 def location():
+
     return os.getcwd() + '\\datasets\\mnist\\data_files\\'
 
 if __name__ == '__main__':

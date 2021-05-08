@@ -49,7 +49,10 @@ class SMNN:
 
     def initialize_parameters(self):  # initialize weights and biases
         #chech switch function for the activation meanings
-        previous_layer = self.store["A0"].shape[1]
+        if len(self.store["A0"].shape) == 4:
+            previous_layer = self.store["A0"].shape[3]
+        else:
+            previous_layer = 1
         for layer in range(self.layer_count):
             if self.layer[layer,0] == 0:
                 self.hyper_parameters["W" + str(layer + 1)] = np.random.randn(self.layer[layer,1], previous_layer) * 0.0001
@@ -65,7 +68,6 @@ class SMNN:
                     self.hyper_parameters["W" + str(layer + 1)] = np.random.randn(self.layer[layer,0], self.layer[layer,0], previous_layer, self.layer[layer,1]) * 0.0001
                     self.hyper_parameters["bias" + str(layer + 1)] = np.random.randn(1, 1, 1, self.layer[layer,1]) * 0.0001
                     previous_layer = self.layer[layer,1]
-            print('W' + str(layer + 1), self.store['W' + str(layer + 1)].shape)
 
     def pooling(A_prev, hyperparameters, mode="average"):
 
@@ -206,12 +208,12 @@ class SMNN:
         pad = self.hyper_parameters["pad" + str(layer)]
         stride = self.hyper_parameters["stride" + str(layer)]
 
-        assert (A_prev.shape[3] == W[2])  # layers A_Prev and kernel must be equal
+        if W.shape[2] != 1: assert (A_prev.shape[3] == W.shape[2])  # layers A_Prev and kernel must be equal
 
         z_layers = A_prev.shape[0]
-        z_h = int((A_prev.shape[1] - W[0] + 2 * pad) / stride) + 1
-        z_w = int((A_prev.shape[2] - W[1] + 2 * pad) / stride) + 1
-        z_c = W[3]
+        z_h = int((A_prev.shape[1] - W.shape[0] + 2 * pad) / stride) + 1
+        z_w = int((A_prev.shape[2] - W.shape[1] + 2 * pad) / stride) + 1
+        z_c = W.shape[3]
 
         Z = np.zeros((z_layers, z_h, z_w, z_c), dtype=float)
         # array_splice = np.zeros((W[1], W[2], W[3]))
@@ -268,18 +270,18 @@ class SMNN:
 # -------------------------------------------------------------
     def forward_prop(self):
         for layer in range(1, self.layer_count + 1):
-            if (self.layers[layer - 1, 0] != 0):
-                if self.layers[layer - 1, 1] != 0:
-                    Z, self.store["cache" + str(layer)] = self.convolution_single_layer(self.store["A" + str(layer - 1)],layer)
-                else:
-                    Z = self.pool_single_layer(self.store["A" + str(layer - 1)], layer)
-            else:
-                if len(self.hyper_parameters["W" + str(layer-1)].shape) != len(self.hyper_parameters["W" + str(layer)].shape):
-                    #flatten needs more work
+            if (self.layer[layer - 1, 0] == 0): #linear regression
+                if len(self.hyper_parameters["W" + str(layer - 1)].shape) != len(self.hyper_parameters["W" + str(layer)].shape):
+                    # flatten needs more work
                     self.store["arrayA" + str(layer - 1)] = self.store["A" + str(layer - 1)]
-                    self.store["A" + str(layer - 1)] = self.store["arrayA" + str(layer - 1)].reshape(self.store["A" + str(layer - 1)].shape[0],-1)
-                Z = self.store["A" + str(layer - 1)].dot(self.hyper_parameters["W" + str(layer)].T)+self.hyper_parameters["bias" + str(layer)]
-            self.store["A" + str(layer)] = self.switch(self.layer[layer - 1, 2])(Z)
+                    self.store["A" + str(layer - 1)] = self.store["arrayA" + str(layer - 1)].reshape(self.store["A" + str(layer - 1)].shape[0], -1)
+                Z = self.store["A" + str(layer - 1)].dot(self.hyper_parameters["W" + str(layer)].T) + self.hyper_parameters["bias" + str(layer)]
+                self.store["A" + str(layer)] = self.switch(self.layer[layer - 1, 2])(Z)
+            else:
+                if self.layer[layer - 1, 1] == 0: # pool layer
+                    Z = self.pool_single_layer(self.store["A" + str(layer - 1)], layer)
+                else: # conv layer
+                    Z, self.store["cache" + str(layer)] = self.convolution_single_layer(self.store["A" + str(layer - 1)], layer)
 
     def backward_prop(self): #store and derivatives can be seperated, store not needed anymore
         for bd_layer in reversed(range(1, self.layer_count + 1)):
