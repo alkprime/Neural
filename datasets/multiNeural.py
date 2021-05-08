@@ -52,19 +52,22 @@ class SMNN:
         if len(self.store["A0"].shape) == 4:
             previous_layer = self.store["A0"].shape[3]
         else:
-            previous_layer = 1
+            if len(self.store["A0"].shape) == 2:
+                previous_layer = self.store["A0"].shape[1]
+            else:
+                previous_layer = 1
         for layer in range(self.layer_count):
-            if self.layer[layer,0] == 0:
+            if self.layer[layer,0] == 0: #linear layer
                 self.hyper_parameters["W" + str(layer + 1)] = np.random.randn(self.layer[layer,1], previous_layer) * 0.0001
                 self.hyper_parameters["bias" + str(layer + 1)] = np.random.randn(self.layer[layer,1]) * 0.0001
                 previous_layer = self.layer[layer,1]
+                print(self.hyper_parameters["W" + str(layer + 1)].shape)
             else:
                 self.hyper_parameters["stride" + str(layer + 1)] = self.layer[layer,3]
                 self.hyper_parameters["pad" + str(layer + 1)] = self.layer[layer, 4]
-                if self.layer[layer,1] == 0:
-                    # pooling layer
+                if self.layer[layer,1] == 0: # pooling layer
                     self.hyper_parameters["kernel" + str(layer + 1)] = np.random.randn(self.layer[layer, 0], self.layer[layer, 0], 0, 0) * 0.0001
-                else:
+                else: #conv layer
                     self.hyper_parameters["W" + str(layer + 1)] = np.random.randn(self.layer[layer,0], self.layer[layer,0], previous_layer, self.layer[layer,1]) * 0.0001
                     self.hyper_parameters["bias" + str(layer + 1)] = np.random.randn(1, 1, 1, self.layer[layer,1]) * 0.0001
                     previous_layer = self.layer[layer,1]
@@ -271,10 +274,11 @@ class SMNN:
     def forward_prop(self):
         for layer in range(1, self.layer_count + 1):
             if (self.layer[layer - 1, 0] == 0): #linear regression
-                if len(self.hyper_parameters["W" + str(layer - 1)].shape) != len(self.hyper_parameters["W" + str(layer)].shape):
-                    # flatten needs more work
-                    self.store["arrayA" + str(layer - 1)] = self.store["A" + str(layer - 1)]
-                    self.store["A" + str(layer - 1)] = self.store["arrayA" + str(layer - 1)].reshape(self.store["A" + str(layer - 1)].shape[0], -1)
+                if layer > 1:
+                    if len(self.hyper_parameters["W" + str(layer - 1)].shape) != len(self.hyper_parameters["W" + str(layer)].shape):
+                        # flatten needs more work
+                        self.store["arrayA" + str(layer - 1)] = self.store["A" + str(layer - 1)]
+                        self.store["A" + str(layer - 1)] = self.store["arrayA" + str(layer - 1)].reshape(self.store["A" + str(layer - 1)].shape[0], -1)
                 Z = self.store["A" + str(layer - 1)].dot(self.hyper_parameters["W" + str(layer)].T) + self.hyper_parameters["bias" + str(layer)]
                 self.store["A" + str(layer)] = self.switch(self.layer[layer - 1, 2])(Z)
             else:
@@ -292,7 +296,7 @@ class SMNN:
                 self.store["dZ" + str(bd_layer - 1)] = (self.derivative_switch(self.layer[bd_layer - 1, 2])(self.store["A" + str(bd_layer - 1)])) * self.store["dA" + str(bd_layer - 1)]
                 # above line is a msterpeice enjoy!
 
-    def flat_handwritting_recognition(self, X, Y, batch_size, epoch=50, learning_rate=0.01):
+    def handwritting_recognition(self, X, Y, batch_size, epoch=50, learning_rate=0.01):
         batches_per_epoch = int(X.shape[0] / batch_size)
         remaining_from_batch = X.shape[0] % batch_size
 
