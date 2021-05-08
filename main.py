@@ -36,7 +36,6 @@ if __name__ == '__main__':
     train_x, train_y, test_x, test_y = pre_process_data(train_x, train_y, test_x, test_y)
 
     print("train_x's shape: " + str(train_x.shape))
-    print("test_x's shape: " + str(test_x.shape))
     print("train_y's shape: " + str(train_y.shape))
 
     # layerspecs:
@@ -45,6 +44,8 @@ if __name__ == '__main__':
     # 2:activation                      negative for pooling
     # 3:stride
     # 4:pad
+
+    # enable for conv net
     layers = np.ones((7, 5), dtype=int)
     layers[0] = [5,6,1,1,2]     #conv k=5, f=6, tanh, s=1, p=2
     layers[1] = [2,0,-1,2,0]    #average pool k=2, s=2
@@ -55,7 +56,18 @@ if __name__ == '__main__':
     layers[6] = [0,10,3,0,0]    #FC 84-10 softmax
 
     smnn = SMNN(layers)
-    costs = smnn.flat_handwritting_recognition(train_images,train_labels, batch_size=600, epoch=100, learning_rate=0.1)
+    costs = smnn.handwritting_recognition(train_images, train_labels, batch_size=600, epoch=10, learning_rate=0.1)
+    # disable above if not conv
+
+    # enable for flat net
+    # layers = np.ones((2, 3), dtype=int)
+    # layers[0] = [0,50,0]
+    # layers[1] = [0,10,3]
+    #
+    # smnn = flatMLNN(layers)
+    # costs = smnn.flat_handwritting_recognition(train_x,train_y, batch_size=60000, epoch=100, learning_rate=0.1)
+    # disbale above if not flat
+
     plt.figure()
     plt.plot(np.arange(len(costs)), costs)
     plt.show()
