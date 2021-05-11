@@ -27,8 +27,8 @@ def location():
 
 if __name__ == '__main__':
     #fetch data, change location function when using GUI
-    # train_images = idx2numpy.convert_from_file(location() + 'train-images.idx3-ubyte')
-    # train_labels = idx2numpy.convert_from_file(location() + 'train-labels.idx1-ubyte')
+    train_images = idx2numpy.convert_from_file(location() + 'train-images.idx3-ubyte')
+    train_labels = idx2numpy.convert_from_file(location() + 'train-labels.idx1-ubyte')
     # print(train_images.shape)
     # print(train_images.shape)
     train_x, train_y, test_x, test_y = mnist.get_data()
@@ -46,25 +46,25 @@ if __name__ == '__main__':
     # 4:pad
 
     # enable for conv net
-    # layers = np.ones((7, 5), dtype=int)
-    # layers[0] = [5,6,1,1,2]     #conv k=5, f=6, tanh, s=1, p=2
-    # layers[1] = [2,0,-1,2,0]    #average pool k=2, s=2
-    # layers[2] = [5,16,1,1,0]    #conv k=5, f=16, tanh, s=1, p=0
-    # layers[3] = [5,0,-1,2,0]    #average pool k=2, s=2
-    # layers[4] = [0,120,1,0,0]   #FC 160-120, tanh
-    # layers[5] = [0,84,1,0,0]    #FC 120-84 tanh
-    # layers[6] = [0,10,3,0,0]    #FC 84-10 softmax
-    
-    # smnn = SMNN(layers)
-    # costs = smnn.handwritting_recognition(train_images, train_labels, batch_size=600, epoch=10, learning_rate=0.1)
-    
-    
-    layers = np.ones((2, 5), dtype=int)
-    layers[0] = [0,100,0,0,0] 
-    layers[1] = [0,10,3,0,0]
+    layers = np.ones((7, 5), dtype=int)
+    layers[0] = [5,6,1,1,2]     #conv k=5, f=6, tanh, s=1, p=2
+    layers[1] = [2,0,-1,2,0]    #average pool k=2, s=2
+    layers[2] = [5,16,1,1,0]    #conv k=5, f=16, tanh, s=1, p=0
+    layers[3] = [5,0,-1,2,0]    #average pool k=2, s=2
+    layers[4] = [0,120,1,0,0]   #FC 160-120, tanh
+    layers[5] = [0,84,1,0,0]    #FC 120-84 tanh
+    layers[6] = [0,10,3,0,0]    #FC 84-10 softmax
     
     smnn = SMNN(layers)
-    costs = smnn.handwritting_recognition(train_x,train_y, batch_size=60000, epoch=10, learning_rate=0.1)
+    costs = smnn.handwritting_recognition(train_images, train_labels, batch_size=600, epoch=10, learning_rate=0.1)
+    
+    
+    # layers = np.ones((2, 5), dtype=int)
+    # layers[0] = [0,100,0,0,0]
+    # layers[1] = [0,10,3,0,0]
+    #
+    # smnn = SMNN(layers)
+    # costs = smnn.handwritting_recognition(train_x,train_y, batch_size=60000, epoch=10, learning_rate=0.1)
     
     
     

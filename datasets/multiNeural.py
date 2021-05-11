@@ -122,8 +122,8 @@ class SMNN:
         return - np.mean(y * np.log(y_hat))
 
 # ----------------------------------------------------- padding
-    def padding(given_array, padding):
-        return np.pad(given_array, ((0, 0), (padding, padding), (padding, padding), (0, 0)))
+    def padding(self, given_array, padding):
+        return np.pad(given_array, ((0, 0), (padding, padding), (padding, padding)))
 
     # not used and I can not see a useful implementation
     def random_pad(given_array, padding):
