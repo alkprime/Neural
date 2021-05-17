@@ -54,7 +54,7 @@ if __name__ == '__main__':
     layers[4] = [0,120,1,0,0]   #FC 160-120, tanh
     layers[5] = [0,84,1,0,0]    #FC 120-84 tanh
     layers[6] = [0,10,3,0,0]    #FC 84-10 softmax
-
+    
     smnn = SMNN(layers)
     costs = smnn.handwritting_recognition(train_images, train_labels, batch_size=600, epoch=10, learning_rate=0.1)
     
