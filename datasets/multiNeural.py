@@ -198,7 +198,7 @@ class SMNN:
 # -------------------------------------------------------------
 
 # ----------------------------------------------------- conv
-    def conv_single_step(given_array, W, b):
+    def conv_single_step(self, given_array, W, b):
         Z = W.dot(given_array)
         Z = np.sum(Z)
         return Z + float(b)
@@ -224,15 +224,17 @@ class SMNN:
         for m in range(z_layers):
             a_selected = A_prev[m]
             for i in range(z_h):
+                print("stride ", stride)
                 h_start = stride * i
-                h_end = h_start + W[0]
+                h_end = h_start + W.shape[0]
                 for j in range(z_w):
                     w_start = stride * j
-                    w_end = w_start + W[1]
+                    w_end = w_start + W.shape[1]
                     for c in range(z_c):
+                        print("here ", a_selected.shape)
                         array_splice = a_selected[h_start:h_end, w_start:w_end]
                         weight = W[:, :, :, c]
-                        if W[2] == 1:
+                        if W.shape[2] == 1:
                             weight = np.reshape(weight, (W.shape[0], W.shape[1]))
                         bias = b[:, :, :, c]
                         Z[m, i, j, c] = self.conv_single_step(array_splice, weight, bias)
@@ -282,13 +284,13 @@ class SMNN:
                         self.store["arrayA" + str(layer - 1)] = self.store["A" + str(layer - 1)]
                         self.store["A" + str(layer - 1)] = self.store["arrayA" + str(layer - 1)].reshape(self.store["A" + str(layer - 1)].shape[0], -1)
                 Z = self.store["A" + str(layer - 1)].dot(self.hyper_parameters["W" + str(layer)].T) + self.hyper_parameters["bias" + str(layer)]
-                self.store["A" + str(layer)] = self.switch(self.layer[layer - 1, 2])(Z)
             else:
                 if self.layer[layer - 1, 1] == 0: # pool layer
                     Z = self.pool_single_layer(self.store["A" + str(layer - 1)], layer)
                 else: # conv layer
-                    Z, self.store["cache" + str(layer)] = self.convolution_single_layer(self.store["A" + str(layer - 1)], layer)
-
+                    Z = self.convolution_single_layer(self.store["A" + str(layer - 1)], layer)
+            if self.layer[ - 1, 2] > 0:
+                self.store["A" + str(layer)] = self.switch(self.layer[ - 1, 2])(Z)
     def backward_prop(self): #store and derivatives can be seperated, store not needed anymore
         for bd_layer in reversed(range(1, self.layer_count + 1)):
             self.store["dW" + str(bd_layer)] = self.store["dZ" + str(bd_layer)].T.dot(self.store["A" + str(bd_layer - 1)])
