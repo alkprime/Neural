@@ -230,8 +230,10 @@ class SMNN:
                     w_start = stride * j
                     w_end = w_start + W[1]
                     for c in range(z_c):
-                        array_splice = a_selected[h_start:h_end, w_start:w_end, :]
+                        array_splice = a_selected[h_start:h_end, w_start:w_end]
                         weight = W[:, :, :, c]
+                        if W[2] == 1:
+                            weight = np.reshape(weight, (W.shape[0], W.shape[1]))
                         bias = b[:, :, :, c]
                         Z[m, i, j, c] = self.conv_single_step(array_splice, weight, bias)
         return Z
