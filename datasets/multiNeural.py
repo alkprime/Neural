@@ -66,7 +66,7 @@ class SMNN:
                 self.hyper_parameters["stride" + str(layer + 1)] = self.layer[layer,3]
                 self.hyper_parameters["pad" + str(layer + 1)] = self.layer[layer, 4]
                 if self.layer[layer,1] == 0: # pooling layer
-                    self.hyper_parameters["kernel" + str(layer + 1)] = np.random.randn(self.layer[layer, 0], self.layer[layer, 0], 0, 0) * 0.0001
+                    self.hyper_parameters["kernel" + str(layer + 1)] = self.layer[layer, 0]
                 else: #conv layer
                     self.hyper_parameters["W" + str(layer + 1)] = np.random.randn(self.layer[layer,0], self.layer[layer,0], previous_layer, self.layer[layer,1]) * 0.0001
                     self.hyper_parameters["bias" + str(layer + 1)] = np.random.randn(1, 1, 1, self.layer[layer,1]) * 0.0001
@@ -152,9 +152,9 @@ class SMNN:
         stride = self.hyper_parameters["stride" + str(layer)]
 
         z_layers = A_prev.shape[0]
-        z_h = int((A_prev.shape[1] - kernel[0]) / stride) + 1
-        z_w = int((A_prev.shape[2] - kernel[1]) / stride) + 1
-        z_c = A_prev[3]
+        z_h = int((A_prev.shape[1] - kernel) / stride) + 1
+        z_w = int((A_prev.shape[2] - kernel) / stride) + 1
+        z_c = A_prev.shape[3]
 
         Z = np.zeros((z_layers, z_h, z_w, z_c), dtype=float)
         # array_splice = np.zeros((W[1], W[2], W[3]))
@@ -162,10 +162,10 @@ class SMNN:
             a_selected = A_prev[m]
             for i in range(z_h):
                 h_start = stride * i
-                h_end = h_start + kernel[0]
+                h_end = h_start + kernel
                 for j in range(z_w):
                     w_start = stride * j
-                    w_end = w_start + kernel[1]
+                    w_end = w_start + kernel
                     for c in range(z_c):
                         array_splice = a_selected[h_start:h_end, w_start:w_end, :]
                         Z[m,i,j,c] = self.switch(self.layer[layer-1,2])(array_splice)
@@ -199,7 +199,7 @@ class SMNN:
 
 # ----------------------------------------------------- conv
     def conv_single_step(self, given_array, W, b):
-        Z = W.dot(given_array)
+        Z = W*given_array
         Z = np.sum(Z)
         return Z + float(b)
 
@@ -224,14 +224,12 @@ class SMNN:
         for m in range(z_layers):
             a_selected = A_prev[m]
             for i in range(z_h):
-                print("stride ", stride)
                 h_start = stride * i
                 h_end = h_start + W.shape[0]
                 for j in range(z_w):
                     w_start = stride * j
                     w_end = w_start + W.shape[1]
                     for c in range(z_c):
-                        print("here ", a_selected.shape)
                         array_splice = a_selected[h_start:h_end, w_start:w_end]
                         weight = W[:, :, :, c]
                         if W.shape[2] == 1:
@@ -279,7 +277,7 @@ class SMNN:
         for layer in range(1, self.layer_count + 1):
             if (self.layer[layer - 1, 0] == 0): #linear regression
                 if layer > 1:
-                    if len(self.hyper_parameters["W" + str(layer - 1)].shape) != len(self.hyper_parameters["W" + str(layer)].shape):
+                    if self.layer[layer - 2, 0] != 0:
                         # flatten needs more work
                         self.store["arrayA" + str(layer - 1)] = self.store["A" + str(layer - 1)]
                         self.store["A" + str(layer - 1)] = self.store["arrayA" + str(layer - 1)].reshape(self.store["A" + str(layer - 1)].shape[0], -1)
@@ -291,6 +289,7 @@ class SMNN:
                     Z = self.convolution_single_layer(self.store["A" + str(layer - 1)], layer)
             if self.layer[ - 1, 2] > 0:
                 self.store["A" + str(layer)] = self.switch(self.layer[ - 1, 2])(Z)
+
     def backward_prop(self): #store and derivatives can be seperated, store not needed anymore
         for bd_layer in reversed(range(1, self.layer_count + 1)):
             self.store["dW" + str(bd_layer)] = self.store["dZ" + str(bd_layer)].T.dot(self.store["A" + str(bd_layer - 1)])
