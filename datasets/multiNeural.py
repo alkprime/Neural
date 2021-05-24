@@ -274,30 +274,63 @@ class SMNN:
         return dA_prev, dW, db
 # -------------------------------------------------------------
     def forward_prop(self):
+        if len(self.store["A0"].shape) == 4:
+            previous_layer = self.store["A0"].shape[3]
+        else:
+            if len(self.store["A0"].shape) == 2:
+                previous_layer = self.store["A0"].shape[1]
+            else:
+                previous_layer = 1
+
         for layer in range(1, self.layer_count + 1):
             if (self.layer[layer - 1, 0] == 0): #linear regression
-                if layer > 1:
+                if layer >= 1:
                     if self.layer[layer - 2, 0] != 0:
                         # flatten needs more work
                         self.store["arrayA" + str(layer - 1)] = self.store["A" + str(layer - 1)]
                         self.store["A" + str(layer - 1)] = self.store["arrayA" + str(layer - 1)].reshape(self.store["A" + str(layer - 1)].shape[0], -1)
+                        previous_layer =  self.store["A" + str(layer - 1)].shape[1]
+                    if ("W" + str(layer)) not in self.hyper_parameters:
+                        self.hyper_parameters["W" + str(layer)] = np.random.randn(self.layer[layer-1, 1], previous_layer) * 0.0001
+                        self.hyper_parameters["bias" + str(layer)] = np.random.randn(self.layer[layer-1, 1]) * 0.0001
+                        previous_layer = self.layer[layer-1, 1]
                 Z = self.store["A" + str(layer - 1)].dot(self.hyper_parameters["W" + str(layer)].T) + self.hyper_parameters["bias" + str(layer)]
             else:
                 if self.layer[layer - 1, 1] == 0: # pool layer
+                    if ("kernel" + str(layer)) not in self.hyper_parameters:
+                        self.hyper_parameters["kernel" + str(layer)] = self.layer[layer-1, 0]
+                        self.hyper_parameters["stride" + str(layer)] = self.layer[layer - 1, 3]
                     Z = self.pool_single_layer(self.store["A" + str(layer - 1)], layer)
                 else: # conv layer
+                    if ("W" + str(layer)) not in self.hyper_parameters:
+                        self.hyper_parameters["W" + str(layer)] = np.random.randn(self.layer[layer-1, 0], self.layer[layer-1, 0], previous_layer, self.layer[layer-1, 1]) * 0.0001
+                        self.hyper_parameters["bias" + str(layer)] = np.random.randn(1, 1, 1, self.layer[layer-1, 1]) * 0.0001
+                        self.hyper_parameters["stride" + str(layer)] = self.layer[layer - 1, 3]
+                        self.hyper_parameters["pad" + str(layer)] = self.layer[layer - 1, 4]
+                        previous_layer = self.layer[layer-1, 1]
                     Z = self.convolution_single_layer(self.store["A" + str(layer - 1)], layer)
-            if self.layer[ - 1, 2] > 0:
+            if self.layer[layer - 1, 2] >= 0:
+                print("W" + str(layer), self.hyper_parameters["W" + str(layer)].shape)
                 self.store["A" + str(layer)] = self.switch(self.layer[ - 1, 2])(Z)
+            else:
+                self.store["A" + str(layer)] = Z #need to check for later use
+            print("A" + str(layer), self.store["A" + str(layer)].shape)
 
     def backward_prop(self): #store and derivatives can be seperated, store not needed anymore
         for bd_layer in reversed(range(1, self.layer_count + 1)):
-            self.store["dW" + str(bd_layer)] = self.store["dZ" + str(bd_layer)].T.dot(self.store["A" + str(bd_layer - 1)])
-            self.store["db" + str(bd_layer)] = np.sum(self.store["dZ" + str(bd_layer)], axis=0)
+            if self.layer[bd_layer-1,0] > 0: #deflatten
+                self.store["A" + str(bd_layer - 1)] = self.store["arrayA" + str(bd_layer - 1)]
+            print(bd_layer, self.store["A" + str(bd_layer - 1)].shape)
+            if self.layer[bd_layer] > 0:
+                self.store["dW" + str(bd_layer)] = self.store["dZ" + str(bd_layer)].T.dot(self.store["A" + str(bd_layer - 1)])
+                self.store["db" + str(bd_layer)] = np.sum(self.store["dZ" + str(bd_layer)], axis=0)
             if bd_layer > 1:
-                self.store["dA" + str(bd_layer - 1)] = self.store["dZ" + str(bd_layer)].dot(self.hyper_parameters["W" + str(bd_layer)])
-                self.store["dZ" + str(bd_layer - 1)] = (self.derivative_switch(self.layer[bd_layer - 1, 2])(self.store["A" + str(bd_layer - 1)])) * self.store["dA" + str(bd_layer - 1)]
+                if self.layer[bd_layer] > 0:
+                    self.store["dA" + str(bd_layer - 1)] = self.store["dZ" + str(bd_layer)].dot(self.hyper_parameters["W" + str(bd_layer)])
+                    self.store["dZ" + str(bd_layer - 1)] = (self.derivative_switch(self.layer[bd_layer - 1, 2])(self.store["A" + str(bd_layer - 1)])) * self.store["dA" + str(bd_layer - 1)]
                 # above line is a msterpeice enjoy!
+                else:
+                    self.store["dA" + str(bd_layer - 1)] = self.pool_backprop(self.store["A" + str(bd_layer)], self.layer[bd_layer])
 
     def handwritting_recognition(self, X, Y, batch_size, epoch=50, learning_rate=0.01):
         batches_per_epoch = int(X.shape[0] / batch_size)
@@ -307,8 +340,8 @@ class SMNN:
             print("remain:", remaining_from_batch)  # add last batch if it has remainder
 
         # sigmoid = 0, tanh = 1, relu  = 2, softmax = 3
-        self.store["A" + str(0)] = X[0:batch_size,:]
-        self.initialize_parameters()
+        # self.store["A" + str(0)] = X[0:batch_size,:]
+        # self.initialize_parameters()
         costs = []
 
         outer = Pb(total=epoch, desc='Epoch', position=0, leave=None) #epoch progress bar - terminal
