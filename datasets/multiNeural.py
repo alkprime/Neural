@@ -4,12 +4,12 @@ import random
 
 class SMNN:
     def __init__(self, layers):
-        self.layer = layers
-        self.layer_count = layers.shape[0]
+        self.layer, self.layer_count, self.pooling_layers = self.organzie_layers(layers)
+        # self.layer = layers
+        # self.layer_count = layers.shape[0]
         self.store = {}
         self.hyper_parameters = {}
         self.costs = []
-
 # ----------------------------------------------------- activation
     def sigmoid(sef, Z):
         return 1 / (1 + np.exp(-Z))
@@ -123,7 +123,12 @@ class SMNN:
 
 # ----------------------------------------------------- padding
     def padding(self, given_array, padding):
-        return np.pad(given_array, ((0, 0), (padding, padding), (padding, padding)))
+        returned = given_array
+        if len(given_array.shape) == 3:
+            returned =  np.pad(given_array, ((0, 0), (padding, padding), (padding, padding)))
+        if len(given_array.shape) == 4:
+            returned =  np.pad(given_array, ((0, 0), (padding, padding), (padding, padding), (0, 0)))
+        return returned
 
     # not used and I can not see a useful implementation
     def random_pad(given_array, padding):
@@ -148,8 +153,8 @@ class SMNN:
     def pool_single_layer(self, A_prev, layer):
         # kernzel size 0 = h, 1 = w, 2 = layers, 3 = filters
 
-        kernel = self.hyper_parameters["kernel" + str(layer)]
-        stride = self.hyper_parameters["stride" + str(layer)]
+        kernel = self.hyper_parameters["poolingKernel" + str(layer)]
+        stride = self.hyper_parameters["poolingStride" + str(layer)]
 
         z_layers = A_prev.shape[0]
         z_h = int((A_prev.shape[1] - kernel) / stride) + 1
@@ -168,7 +173,7 @@ class SMNN:
                     w_end = w_start + kernel
                     for c in range(z_c):
                         array_splice = a_selected[h_start:h_end, w_start:w_end, :]
-                        Z[m,i,j,c] = self.switch(self.layer[layer-1,2])(array_splice)
+                        Z[m,i,j,c] = self.switch(self.pooling_layers[layer,2])(array_splice)
 
         return Z
 
@@ -238,25 +243,30 @@ class SMNN:
                         Z[m, i, j, c] = self.conv_single_step(array_splice, weight, bias)
         return Z
 
-    def backward_conv_single_layer(self, cache, layer):  # needs more work and understading
-        padding_cache = cache
-
+    def backward_conv_single_layer(self, layer, dZ):  # needs more work and understading
         W = self.hyper_parameters["W" + str(layer)]
-        dZ = self.store["dZ" + str(layer)]
         stride = self.hyper_parameters["stride" + str(layer)]
         pad = self.hyper_parameters["pad" + str(layer)]
 
+        print(layer, pad)
         (z_layers, z_h,z_w, z_c) = dZ.shape
-        (_, kernel_h, kernel_w, _) = W.shape
+        (kernel_h, kernel_w, _, _) = W.shape
 
         dA_prev = np.zeros(self.store["A" + str(layer - 1)].shape)
+        # A_prev = self.store["A" + str(layer - 1)]
+        # if pad > 0:
+        print("A_prev ", self.store["A" + str(layer - 1)].shape)
+        print("padding", pad)
         da_prev_pad = self.padding(dA_prev, pad)
         A_prev_pad = self.padding(self.store["A" + str(layer - 1)],pad)
+
         dW = np.zeros(self.hyper_parameters["W" + str(layer)].shape)
-        db = np.zeros(self.hyper_parameters["b" + str(layer)].shape)
+        db = np.zeros(self.hyper_parameters["bias" + str(layer)].shape)
 
         for m in range(z_layers):
+            # if pad > 0:
             A_selected = A_prev_pad[m]
+            # else: A_selected = A_prev[m]
             for i in range(z_h):
                 for j in range(z_w):
                     for c in range(z_c):
@@ -266,7 +276,7 @@ class SMNN:
                         w_end = w_start + kernel_w
 
                         a_slice = A_selected[h_start:h_end, w_start:w_end, :]
-                        da_prev_pad[h_start:h_end, w_start:w_end, :] += W[:, :, :, c] * dZ[m, i, j, c]
+                         da_prev_pad[h_start:h_end, w_start:w_end, :] += W[:, :, :, c] * dZ[m, i, j, c]
 
                         dW[:, :, :, c] += a_slice * dZ[m, i, j, c]
                         db[:, :, :, c] += dZ[m, i, j, c]
@@ -281,8 +291,10 @@ class SMNN:
                 previous_layer = self.store["A0"].shape[1]
             else:
                 previous_layer = 1
-
+        pooling_nb = 0
         for layer in range(1, self.layer_count + 1):
+            # pooled = False
+
             if (self.layer[layer - 1, 0] == 0): #linear regression
                 if layer >= 1:
                     if self.layer[layer - 2, 0] != 0:
@@ -295,42 +307,67 @@ class SMNN:
                         self.hyper_parameters["bias" + str(layer)] = np.random.randn(self.layer[layer-1, 1]) * 0.0001
                         previous_layer = self.layer[layer-1, 1]
                 Z = self.store["A" + str(layer - 1)].dot(self.hyper_parameters["W" + str(layer)].T) + self.hyper_parameters["bias" + str(layer)]
-            else:
-                if self.layer[layer - 1, 1] == 0: # pool layer
-                    if ("kernel" + str(layer)) not in self.hyper_parameters:
-                        self.hyper_parameters["kernel" + str(layer)] = self.layer[layer-1, 0]
-                        self.hyper_parameters["stride" + str(layer)] = self.layer[layer - 1, 3]
-                    Z = self.pool_single_layer(self.store["A" + str(layer - 1)], layer)
-                else: # conv layer
-                    if ("W" + str(layer)) not in self.hyper_parameters:
-                        self.hyper_parameters["W" + str(layer)] = np.random.randn(self.layer[layer-1, 0], self.layer[layer-1, 0], previous_layer, self.layer[layer-1, 1]) * 0.0001
-                        self.hyper_parameters["bias" + str(layer)] = np.random.randn(1, 1, 1, self.layer[layer-1, 1]) * 0.0001
-                        self.hyper_parameters["stride" + str(layer)] = self.layer[layer - 1, 3]
-                        self.hyper_parameters["pad" + str(layer)] = self.layer[layer - 1, 4]
-                        previous_layer = self.layer[layer-1, 1]
-                    Z = self.convolution_single_layer(self.store["A" + str(layer - 1)], layer)
-            if self.layer[layer - 1, 2] >= 0:
-                print("W" + str(layer), self.hyper_parameters["W" + str(layer)].shape)
-                self.store["A" + str(layer)] = self.switch(self.layer[ - 1, 2])(Z)
-            else:
-                self.store["A" + str(layer)] = Z #need to check for later use
-            print("A" + str(layer), self.store["A" + str(layer)].shape)
+            # else:
+            #     if self.layer[layer - 1, 1] == 0:  # pool layer
+            #         # if not pooled:
+            #         #     if ("kernel" + str(layer)) not in self.hyper_parameters:
+            #         #         self.hyper_parameters["kernel" + str(layer)] = self.layer[layer - 1, 0]
+            #         #         self.hyper_parameters["stride" + str(layer)] = self.layer[layer - 1, 3]
+            #         #
+            #         # Z = self.pool_single_layer(self.store["A" + str(layer - 1)], layer)
+            #         # else:
+            #         #     pooled = False
+            #         continue
+            else: # conv layer
+                if ("W" + str(layer)) not in self.hyper_parameters:
+                    self.hyper_parameters["W" + str(layer)] = np.random.randn(self.layer[layer-1, 0], self.layer[layer-1, 0], previous_layer, self.layer[layer-1, 1]) * 0.0001
+                    self.hyper_parameters["bias" + str(layer)] = np.random.randn(1, 1, 1, self.layer[layer-1, 1]) * 0.0001
+                    self.hyper_parameters["stride" + str(layer)] = self.layer[layer - 1, 3]
+                    self.hyper_parameters["pad" + str(layer)] = self.layer[layer - 1, 4]
+                    previous_layer = self.layer[layer-1, 1]
+                Z = self.convolution_single_layer(self.store["A" + str(layer - 1)], layer)
+                if pooling_nb < self.pooling_layers.shape[0] and self.pooling_layers[pooling_nb, 5] == layer:
+                    # pooled = True
+                    if ("poolingKernel" + str(layer)) not in self.hyper_parameters:
+                        self.hyper_parameters["poolingKernel" + str(pooling_nb)] = self.pooling_layers[pooling_nb, 0]
+                        self.hyper_parameters["poolingStride" + str(pooling_nb)] = self.pooling_layers[pooling_nb, 3]
+                    Z = self.pool_single_layer(Z, pooling_nb)
+                    pooling_nb += 1
+            self.store["A" + str(layer)] = self.switch(self.layer[ - 1, 2])(Z)
+            print(self.store["A" + str(layer)].shape, self.hyper_parameters["W" + str(layer)].shape)
 
     def backward_prop(self): #store and derivatives can be seperated, store not needed anymore
+        linear = False
         for bd_layer in reversed(range(1, self.layer_count + 1)):
-            if self.layer[bd_layer-1,0] > 0: #deflatten
-                self.store["A" + str(bd_layer - 1)] = self.store["arrayA" + str(bd_layer - 1)]
-            print(bd_layer, self.store["A" + str(bd_layer - 1)].shape)
-            if self.layer[bd_layer] > 0:
+            print(bd_layer)
+            # if self.layer[bd_layer-1,0] > 0: #deflatten
+            #     self.store["A" + str(bd_layer - 1)] = self.store["arrayA" + str(bd_layer - 1)]
+            if self.layer[bd_layer-1,0] == 0:
+                linear = True
                 self.store["dW" + str(bd_layer)] = self.store["dZ" + str(bd_layer)].T.dot(self.store["A" + str(bd_layer - 1)])
-                self.store["db" + str(bd_layer)] = np.sum(self.store["dZ" + str(bd_layer)], axis=0)
-            if bd_layer > 1:
-                if self.layer[bd_layer] > 0:
+                self.store["dW" + str(bd_layer)] = np.sum(self.store["dZ" + str(bd_layer)], axis=0)
+                if bd_layer > 0:
                     self.store["dA" + str(bd_layer - 1)] = self.store["dZ" + str(bd_layer)].dot(self.hyper_parameters["W" + str(bd_layer)])
                     self.store["dZ" + str(bd_layer - 1)] = (self.derivative_switch(self.layer[bd_layer - 1, 2])(self.store["A" + str(bd_layer - 1)])) * self.store["dA" + str(bd_layer - 1)]
-                # above line is a msterpeice enjoy!
-                else:
-                    self.store["dA" + str(bd_layer - 1)] = self.pool_backprop(self.store["A" + str(bd_layer)], self.layer[bd_layer])
+            else:
+                if linear:
+                    self.store["dZ" + str(bd_layer)] = np.reshape(self.store["dZ" + str(bd_layer)], self.store["arrayA" + str(bd_layer)].shape)
+                self.store["dA" + str(bd_layer - 1)], self.store["dW" + str(bd_layer)], self.store["dW" + str(bd_layer)] = self.backward_conv_single_layer(bd_layer,self.store["dZ" + str(bd_layer)])
+                if bd_layer > 0:
+                    self.store["dZ" + str(bd_layer - 1)] = (self.derivative_switch(self.layer[bd_layer - 1, 2])(self.store["A" + str(bd_layer - 1)])) * self.store["dA" + str(bd_layer - 1)]
+            # if bd_layer > 1:
+
+    def organzie_layers(self, layers): # remove pooling layers from man conv layers and store them separately
+        layer = np.zeros((0,5), dtype=int)
+        pool_layers = np.zeros((0,6), dtype=int)
+        for layer_nb in range(0, layers.shape[0]):
+            if layers[layer_nb,1] == 0:
+                pool_layers = np.append(pool_layers, np.reshape(np.append(layers[layer_nb], layer.shape[0]), (1,6)) , axis=0)
+            else:
+                layer = np.append(layer, np.reshape(layers[layer_nb],(1,5)), axis=0)
+        print(layer)
+        print(pool_layers)
+        return layer,layer.shape[0], pool_layers
 
     def handwritting_recognition(self, X, Y, batch_size, epoch=50, learning_rate=0.01):
         batches_per_epoch = int(X.shape[0] / batch_size)
@@ -351,6 +388,7 @@ class SMNN:
                 batch_start = batch * batch_size
                 batch_end = batch_start + batch_size
                 self.store["A" + str(0)] = X[batch_start:batch_end, :]
+                #add code if begins with pool layer
                 self.forward_prop()
 
                 self.store["dZ" + str(self.layer_count)] = self.store["A" + str(self.layer_count)] - Y[batch_start:batch_end]

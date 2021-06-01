@@ -16,13 +16,15 @@
  pay attention to the imported libraries.
  
  to do:
- - better numerical labeling of neural layers & hyperparameters.
+ - ✓ better numerical labeling of neural layers & hyperparameters.
  - finish the CNN (almost done, some fixes)
  - add a GUI.
- - write a better read me.
+ - write a better read me. hardest task.
 
  Progress:
- - CNN forward propagation is working.
+ - ✓ CNN forward propagation. 
  - CNN backprop is work in progress
- - Pooling layer takes Z and returns an A, check for better solution
- - put activation function after the pooling layer (computation saving)
+ - ✓ Pooling layer takes Z and returns an A, check for better solution
+ - ✓ put activation function after the pooling layer (computation saving)
+ - seperate linear / conv / pooling into different functions.
+ - better layer implementation for each type of NN.
