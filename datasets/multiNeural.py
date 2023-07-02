@@ -2,6 +2,7 @@ import numpy as np
 from tqdm import tqdm as Pb
 import random
 
+
 class SMNN:
     def __init__(self, layers):
         self.layer, self.layer_count, self.pooling_layers = self.organzie_layers(layers)
@@ -10,8 +11,9 @@ class SMNN:
         self.store = {}
         self.hyper_parameters = {}
         self.costs = []
-# ----------------------------------------------------- activation
-    def sigmoid(sef, Z):
+
+    # ----------------------------------------------------- activation
+    def sigmoid(self, Z):
         return 1 / (1 + np.exp(-Z))
 
     def tanh(self, Z):
@@ -45,32 +47,34 @@ class SMNN:
         returned = 0
         if z > 1: returned = 1
         return returned
-# -------------------------------------------------------------
 
-    def initialize_parameters(self):  # initialize weights and biases
-        #chech switch function for the activation meanings
-        if len(self.store["A0"].shape) == 4:
-            previous_layer = self.store["A0"].shape[3]
-        else:
-            if len(self.store["A0"].shape) == 2:
-                previous_layer = self.store["A0"].shape[1]
-            else:
-                previous_layer = 1
-        for layer in range(self.layer_count):
-            if self.layer[layer,0] == 0: #linear layer
-                self.hyper_parameters["W" + str(layer + 1)] = np.random.randn(self.layer[layer,1], previous_layer) * 0.0001
-                self.hyper_parameters["bias" + str(layer + 1)] = np.random.randn(self.layer[layer,1]) * 0.0001
-                previous_layer = self.layer[layer,1]
-                print(self.hyper_parameters["W" + str(layer + 1)].shape)
-            else:
-                self.hyper_parameters["stride" + str(layer + 1)] = self.layer[layer,3]
-                self.hyper_parameters["pad" + str(layer + 1)] = self.layer[layer, 4]
-                if self.layer[layer,1] == 0: # pooling layer
-                    self.hyper_parameters["kernel" + str(layer + 1)] = self.layer[layer, 0]
-                else: #conv layer
-                    self.hyper_parameters["W" + str(layer + 1)] = np.random.randn(self.layer[layer,0], self.layer[layer,0], previous_layer, self.layer[layer,1]) * 0.0001
-                    self.hyper_parameters["bias" + str(layer + 1)] = np.random.randn(1, 1, 1, self.layer[layer,1]) * 0.0001
-                    previous_layer = self.layer[layer,1]
+    # -------------------------------------------------------------
+
+    # def initialize_parameters(self):  # initialize weights and biases
+    #     # chech switch function for the activation meanings
+    #     if len(self.store["A0"].shape) == 4:
+    #         previous_layer = self.store["A0"].shape[3]
+    #     else:
+    #         if len(self.store["A0"].shape) == 2:
+    #             previous_layer = self.store["A0"].shape[1]
+    #         else:
+    #             previous_layer = 1
+    #     for layer in range(self.layer_count):
+    #         if self.layer[layer, 0] == 0:  # linear layer
+    #             self.hyper_parameters["W" + str(layer + 1)] = np.random.randn(self.layer[layer, 1], previous_layer) * 0.0001
+    #             self.hyper_parameters["bias" + str(layer + 1)] = np.random.randn(self.layer[layer, 1]) * 0.0001
+    #             previous_layer = self.layer[layer, 1]
+    #             print("W" + str(layer + 1) + ": ", self.hyper_parameters["W" + str(layer + 1)].shape)
+    #         else:
+    #             self.hyper_parameters["stride" + str(layer + 1)] = self.layer[layer, 3]
+    #             self.hyper_parameters["pad" + str(layer + 1)] = self.layer[layer, 4]
+    #             if self.layer[layer, 1] == 0:  # pooling layer
+    #                 self.hyper_parameters["kernel" + str(layer + 1)] = self.layer[layer, 0]
+    #             else:  # conv layer
+    #                 self.hyper_parameters["W" + str(layer + 1)] = np.random.randn(self.layer[layer, 0], self.layer[layer, 0], previous_layer, self.layer[layer, 1]) * 0.0001
+    #                 self.hyper_parameters["bias" + str(layer + 1)] = np.random.randn(1, 1, 1,self.layer[layer, 1]) * 0.0001
+    #                 previous_layer = self.layer[layer, 1]
+    #                 print("W" + str(layer + 1) + ": ", self.hyper_parameters["W" + str(layer + 1)].shape)
 
     def pooling(A_prev, hyperparameters, mode="average"):
 
@@ -121,13 +125,13 @@ class SMNN:
     def computeCost(self, y_hat, y):
         return - np.mean(y * np.log(y_hat))
 
-# ----------------------------------------------------- padding
+    # ----------------------------------------------------- padding
     def padding(self, given_array, padding):
         returned = given_array
         if len(given_array.shape) == 3:
-            returned =  np.pad(given_array, ((0, 0), (padding, padding), (padding, padding)))
+            returned = np.pad(given_array, ((0, 0), (padding, padding), (padding, padding)))
         if len(given_array.shape) == 4:
-            returned =  np.pad(given_array, ((0, 0), (padding, padding), (padding, padding), (0, 0)))
+            returned = np.pad(given_array, ((0, 0), (padding, padding), (padding, padding), (0, 0)))
         return returned
 
     # not used and I can not see a useful implementation
@@ -136,18 +140,20 @@ class SMNN:
         paddingup = random.randint(0, padding)
         paddingleft = random.randint(0, padding)
         # return np.pad(given_array, ((0,0),(padding,padding),(padding,padding),(0,0)))
-        padded_array = np.pad(given_array, ((0, 0), (paddingup, padding - paddingup), (paddingleft, padding - paddingleft), (0, 0)))
+        padded_array = np.pad(given_array,
+                              ((0, 0), (paddingup, padding - paddingup), (paddingleft, padding - paddingleft), (0, 0)))
         cache = (paddingup, paddingleft)
         return padded_array, cache
-# -------------------------------------------------------------
 
-# ----------------------------------------------------- pool
-    def create_mask_from_window(x, mode):
+    # -------------------------------------------------------------
+
+    # ----------------------------------------------------- pool
+    def create_mask_from_window(self, x, mode):
         if mode == -2:
             mask = (x == np.max(x))
         if mode == -1:
             (n_h, n_w) = x.shape
-            mask = 1/(n_h*n_w)
+            mask = 1 / (n_h * n_w)
         return mask
 
     def pool_single_layer(self, A_prev, layer):
@@ -173,38 +179,40 @@ class SMNN:
                     w_end = w_start + kernel
                     for c in range(z_c):
                         array_splice = a_selected[h_start:h_end, w_start:w_end, :]
-                        Z[m,i,j,c] = self.switch(self.pooling_layers[layer,2])(array_splice)
+                        Z[m, i, j, c] = self.switch(self.pooling_layers[layer, 2])(array_splice)
 
         return Z
 
-    def pool_backprop(self, dA, layer):
+    def pool_backprop(self, dA, layer, pool_Layer):
         A_prev = self.store["A" + str(layer - 1)]
         dA_prev = np.zeros(A_prev.shape)
 
         (da_layer, da_h, da_w, da_c) = dA_prev.shape
 
-        kernel = self.hyper_parameters["kernel" + str(layer)]
-        stride = self.hyper_parameters["stride" + str(layer)]
+        kernel = self.hyper_parameters["poolingKernel" + str(pool_Layer)]
+        stride = self.hyper_parameters["poolingStride" + str(pool_Layer)]
 
         for m in range(da_layer):
             a_selected = A_prev[m]
             for i in range(da_h):
                 h_start = stride * i
-                h_end = h_start + kernel[0]
+                h_end = h_start + kernel
                 for j in range(da_w):
                     w_start = stride * j
-                    w_end = w_start + kernel[1]
+                    w_end = w_start + kernel
                     for c in range(da_c):
                         a_prev_slice = a_selected[h_start:h_end, w_start:w_end, :]
-                        mask = self.create_mask_from_window(a_prev_slice,self.layer[layer,2])
-                        dA_prev[m, h_start:h_end, w_start:w_end,c] = mask * dA[m,i,j,c]
+                        mask = self.create_mask_from_window(a_prev_slice, self.pooling_layers[pool_Layer, 2])
+                        print(dA_prev.shape, mask.shape, dA.shape)
+                        dA_prev[m, h_start:h_end, w_start:w_end, c] = mask[:, :, c] * dA[m, i, j, c]
 
         return dA_prev
-# -------------------------------------------------------------
 
-# ----------------------------------------------------- conv
+    # -------------------------------------------------------------
+
+    # ----------------------------------------------------- conv
     def conv_single_step(self, given_array, W, b):
-        Z = W*given_array
+        Z = W * given_array
         Z = np.sum(Z)
         return Z + float(b)
 
@@ -243,22 +251,22 @@ class SMNN:
                         Z[m, i, j, c] = self.conv_single_step(array_splice, weight, bias)
         return Z
 
-    def backward_conv_single_layer(self, layer, dZ):  # needs more work and understading
+    def backward_conv_single_layer(self, layer, dZ):  # needs more work and understanding
         W = self.hyper_parameters["W" + str(layer)]
         stride = self.hyper_parameters["stride" + str(layer)]
         pad = self.hyper_parameters["pad" + str(layer)]
 
-        print(layer, pad)
-        (z_layers, z_h,z_w, z_c) = dZ.shape
+        # print(layer, pad)
+        (z_layers, z_h, z_w, z_c) = dZ.shape
         (kernel_h, kernel_w, _, _) = W.shape
 
         dA_prev = np.zeros(self.store["A" + str(layer - 1)].shape)
         # A_prev = self.store["A" + str(layer - 1)]
         # if pad > 0:
         print("A_prev ", self.store["A" + str(layer - 1)].shape)
-        print("padding", pad)
+        print("padding ", pad)
         da_prev_pad = self.padding(dA_prev, pad)
-        A_prev_pad = self.padding(self.store["A" + str(layer - 1)],pad)
+        A_prev_pad = self.padding(self.store["A" + str(layer - 1)], pad)
 
         dW = np.zeros(self.hyper_parameters["W" + str(layer)].shape)
         db = np.zeros(self.hyper_parameters["bias" + str(layer)].shape)
@@ -276,13 +284,21 @@ class SMNN:
                         w_end = w_start + kernel_w
 
                         a_slice = A_selected[h_start:h_end, w_start:w_end, :]
-                         da_prev_pad[h_start:h_end, w_start:w_end, :] += W[:, :, :, c] * dZ[m, i, j, c]
+                        # print(da_prev_pad.shape, W.shape, dZ.shape)
+                        da_prev_pad[:, h_start:h_end, w_start:w_end, :] += W[:, :, :, c] * dZ[m, i, j, c]
 
                         dW[:, :, :, c] += a_slice * dZ[m, i, j, c]
                         db[:, :, :, c] += dZ[m, i, j, c]
-            dA_prev[m, :, :, :] = da_prev_pad[pad:-pad, pad:-pad, :]
+            print("da_prev_pad shape: ", da_prev_pad.shape)
+            print("pad: ", pad)
+            print("dA_prev shape: ", dA_prev.shape)
+            if (pad > 0):
+                dA_prev[m, :, :, :] = da_prev_pad[:, pad:-pad, pad:-pad, :]
+            else:
+                dA_prev = da_prev_pad
         return dA_prev, dW, db
-# -------------------------------------------------------------
+
+    # -------------------------------------------------------------
     def forward_prop(self):
         if len(self.store["A0"].shape) == 4:
             previous_layer = self.store["A0"].shape[3]
@@ -291,58 +307,46 @@ class SMNN:
                 previous_layer = self.store["A0"].shape[1]
             else:
                 previous_layer = 1
+
         pooling_nb = 0
+
         for layer in range(1, self.layer_count + 1):
             # pooled = False
 
-            if (self.layer[layer - 1, 0] == 0): #linear regression
+            if (self.layer[layer - 1, 0] == 0):  # linear regression
                 if layer >= 1:
-                    if self.layer[layer - 2, 0] != 0:
-                        # flatten needs more work
+                    if self.layer[layer - 2, 0] != 0:  # flatten needs more work
                         self.store["arrayA" + str(layer - 1)] = self.store["A" + str(layer - 1)]
                         self.store["A" + str(layer - 1)] = self.store["arrayA" + str(layer - 1)].reshape(self.store["A" + str(layer - 1)].shape[0], -1)
-                        previous_layer =  self.store["A" + str(layer - 1)].shape[1]
-                    if ("W" + str(layer)) not in self.hyper_parameters:
-                        self.hyper_parameters["W" + str(layer)] = np.random.randn(self.layer[layer-1, 1], previous_layer) * 0.0001
-                        self.hyper_parameters["bias" + str(layer)] = np.random.randn(self.layer[layer-1, 1]) * 0.0001
-                        previous_layer = self.layer[layer-1, 1]
-                Z = self.store["A" + str(layer - 1)].dot(self.hyper_parameters["W" + str(layer)].T) + self.hyper_parameters["bias" + str(layer)]
-            # else:
-            #     if self.layer[layer - 1, 1] == 0:  # pool layer
-            #         # if not pooled:
-            #         #     if ("kernel" + str(layer)) not in self.hyper_parameters:
-            #         #         self.hyper_parameters["kernel" + str(layer)] = self.layer[layer - 1, 0]
-            #         #         self.hyper_parameters["stride" + str(layer)] = self.layer[layer - 1, 3]
-            #         #
-            #         # Z = self.pool_single_layer(self.store["A" + str(layer - 1)], layer)
-            #         # else:
-            #         #     pooled = False
-            #         continue
-            else: # conv layer
-                if ("W" + str(layer)) not in self.hyper_parameters:
-                    self.hyper_parameters["W" + str(layer)] = np.random.randn(self.layer[layer-1, 0], self.layer[layer-1, 0], previous_layer, self.layer[layer-1, 1]) * 0.0001
-                    self.hyper_parameters["bias" + str(layer)] = np.random.randn(1, 1, 1, self.layer[layer-1, 1]) * 0.0001
+                        previous_layer = self.store["A" + str(layer - 1)].shape[1]
+                    if ("W" + str(layer)) not in self.hyper_parameters:  # Create parameters if it is not available
+                        self.hyper_parameters["W" + str(layer)] = np.random.randn(self.layer[layer - 1, 1], previous_layer) * 0.0001
+                        self.hyper_parameters["bias" + str(layer)] = np.random.randn(self.layer[layer - 1, 1]) * 0.0001
+                        previous_layer = self.layer[layer - 1, 1]
+                Z = self.store["A" + str(layer - 1)].dot(self.hyper_parameters["W" + str(layer)].T) + \
+                    self.hyper_parameters["bias" + str(layer)]
+            else:  # conv layer
+                if ("W" + str(layer)) not in self.hyper_parameters:  # Create parameters if it is not available
+                    self.hyper_parameters["W" + str(layer)] = np.random.randn(self.layer[layer - 1, 0], self.layer[layer - 1, 0], previous_layer, self.layer[layer - 1, 1]) * 0.0001
+                    self.hyper_parameters["bias" + str(layer)] = np.random.randn(1, 1, 1, self.layer[layer - 1, 1]) * 0.0001
                     self.hyper_parameters["stride" + str(layer)] = self.layer[layer - 1, 3]
                     self.hyper_parameters["pad" + str(layer)] = self.layer[layer - 1, 4]
-                    previous_layer = self.layer[layer-1, 1]
+                    previous_layer = self.layer[layer - 1, 1]
                 Z = self.convolution_single_layer(self.store["A" + str(layer - 1)], layer)
-                if pooling_nb < self.pooling_layers.shape[0] and self.pooling_layers[pooling_nb, 5] == layer:
-                    # pooled = True
-                    if ("poolingKernel" + str(layer)) not in self.hyper_parameters:
+                if pooling_nb < self.pooling_layers.shape[0] and self.pooling_layers[pooling_nb, 5] == layer:  # pooled = True
+                    if ("poolingKernel" + str(layer)) not in self.hyper_parameters:  # Create parameters if it is not available
                         self.hyper_parameters["poolingKernel" + str(pooling_nb)] = self.pooling_layers[pooling_nb, 0]
                         self.hyper_parameters["poolingStride" + str(pooling_nb)] = self.pooling_layers[pooling_nb, 3]
                     Z = self.pool_single_layer(Z, pooling_nb)
                     pooling_nb += 1
-            self.store["A" + str(layer)] = self.switch(self.layer[ - 1, 2])(Z)
-            print(self.store["A" + str(layer)].shape, self.hyper_parameters["W" + str(layer)].shape)
+            self.store["A" + str(layer)] = self.switch(self.layer[- 1, 2])(Z)
+            print("A" + str(layer) + ": ", self.store["A" + str(layer)].shape, "W" + str(layer) + ": ", self.hyper_parameters["W" + str(layer)].shape)
 
-    def backward_prop(self): #store and derivatives can be seperated, store not needed anymore
+    def backward_prop(self):  # store and derivatives can be seperated, store not needed anymore
         linear = False
+        pooling_nb = len(self.pooling_layers) - 1
         for bd_layer in reversed(range(1, self.layer_count + 1)):
-            print(bd_layer)
-            # if self.layer[bd_layer-1,0] > 0: #deflatten
-            #     self.store["A" + str(bd_layer - 1)] = self.store["arrayA" + str(bd_layer - 1)]
-            if self.layer[bd_layer-1,0] == 0:
+            if self.layer[bd_layer - 1, 0] == 0:
                 linear = True
                 self.store["dW" + str(bd_layer)] = self.store["dZ" + str(bd_layer)].T.dot(self.store["A" + str(bd_layer - 1)])
                 self.store["dW" + str(bd_layer)] = np.sum(self.store["dZ" + str(bd_layer)], axis=0)
@@ -352,43 +356,48 @@ class SMNN:
             else:
                 if linear:
                     self.store["dZ" + str(bd_layer)] = np.reshape(self.store["dZ" + str(bd_layer)], self.store["arrayA" + str(bd_layer)].shape)
-                self.store["dA" + str(bd_layer - 1)], self.store["dW" + str(bd_layer)], self.store["dW" + str(bd_layer)] = self.backward_conv_single_layer(bd_layer,self.store["dZ" + str(bd_layer)])
+                if pooling_nb >= 0 and self.pooling_layers[pooling_nb, 5] == bd_layer:
+                    self.store["dZ" + str(bd_layer)] = self.pool_backprop(self.store["dZ" + str(bd_layer)], bd_layer, pooling_nb)
+                    pooling_nb -= 1
+                self.store["dA" + str(bd_layer - 1)], self.store["dW" + str(bd_layer)], self.store["dW" + str(bd_layer)] = self.backward_conv_single_layer(bd_layer, self.store["dZ" + str(bd_layer)])
+                linear = False
                 if bd_layer > 0:
                     self.store["dZ" + str(bd_layer - 1)] = (self.derivative_switch(self.layer[bd_layer - 1, 2])(self.store["A" + str(bd_layer - 1)])) * self.store["dA" + str(bd_layer - 1)]
             # if bd_layer > 1:
 
-    def organzie_layers(self, layers): # remove pooling layers from man conv layers and store them separately
-        layer = np.zeros((0,5), dtype=int)
-        pool_layers = np.zeros((0,6), dtype=int)
+    def organzie_layers(self, layers):  # remove pooling layers from man conv layers and store them separately
+        layer = np.zeros((0, 5), dtype=int)
+        pool_layers = np.zeros((0, 6), dtype=int)
         for layer_nb in range(0, layers.shape[0]):
-            if layers[layer_nb,1] == 0:
-                pool_layers = np.append(pool_layers, np.reshape(np.append(layers[layer_nb], layer.shape[0]), (1,6)) , axis=0)
+            if layers[layer_nb, 1] == 0:
+                pool_layers = np.append(pool_layers, np.reshape(np.append(layers[layer_nb], layer.shape[0]), (1, 6)), axis=0)
             else:
-                layer = np.append(layer, np.reshape(layers[layer_nb],(1,5)), axis=0)
-        print(layer)
-        print(pool_layers)
-        return layer,layer.shape[0], pool_layers
+                layer = np.append(layer, np.reshape(layers[layer_nb], (1, 5)), axis=0)
+        print("pooled layer: ", layer)
+        print("pool Layer: ", pool_layers)
+        return layer, layer.shape[0], pool_layers
 
     def handwritting_recognition(self, X, Y, batch_size, epoch=50, learning_rate=0.01):
         batches_per_epoch = int(X.shape[0] / batch_size)
         remaining_from_batch = X.shape[0] % batch_size
 
         if (remaining_from_batch > 0):
-            print("remain:", remaining_from_batch)  # add last batch if it has remainder
+            print("remain: ", remaining_from_batch)  # add last batch if it has remainder
 
         # sigmoid = 0, tanh = 1, relu  = 2, softmax = 3
         # self.store["A" + str(0)] = X[0:batch_size,:]
         # self.initialize_parameters()
         costs = []
 
-        outer = Pb(total=epoch, desc='Epoch', position=0, leave=None) #epoch progress bar - terminal
+        outer = Pb(total=epoch, desc='Epoch', position=0, leave=None)  # epoch progress bar - terminal
         for spin in range(epoch):
-            inner = Pb(total=batches_per_epoch, desc='Batch', position=1, leave=None) #batch progress bar - terminal
+            inner = Pb(total=batches_per_epoch, desc='Batch', position=1, leave=None)  # batch progress bar - terminal
             for batch in range(batches_per_epoch):
                 batch_start = batch * batch_size
                 batch_end = batch_start + batch_size
                 self.store["A" + str(0)] = X[batch_start:batch_end, :]
-                #add code if begins with pool layer
+
+                # add code if begins with pool layer
                 self.forward_prop()
 
                 self.store["dZ" + str(self.layer_count)] = self.store["A" + str(self.layer_count)] - Y[batch_start:batch_end]
